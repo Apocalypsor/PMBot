@@ -4,10 +4,6 @@ export const normalizeKeyword = (value: string): string => {
   return value.trim().replace(/\s+/g, " ");
 };
 
-export const splitKeywords = (value: string): string[] => {
-  return uniqueKeywords(value.split(/[,\n]/).map(normalizeKeyword));
-};
-
 export const uniqueKeywords = (words: string[]): string[] => {
   return [...new Set(words.map(normalizeKeyword).filter(Boolean))].sort(
     (a, b) => a.localeCompare(b),
@@ -15,9 +11,7 @@ export const uniqueKeywords = (words: string[]): string[] => {
 };
 
 export const getAllBannedKeywords = async (env: Env): Promise<string[]> => {
-  const envWords = splitKeywords(env.BANNED_KEYWORDS);
-  const dynamicWords = await getDynamicBannedKeywords(env);
-  return uniqueKeywords([...envWords, ...dynamicWords]);
+  return getDynamicBannedKeywords(env);
 };
 
 export const findBlockedKeyword = async (

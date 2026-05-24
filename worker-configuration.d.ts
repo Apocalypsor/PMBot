@@ -4,7 +4,6 @@
 interface __BaseEnv_Env {
 	PMBOT_KV: KVNamespace;
 	WORKER_NAME: "pmbot";
-	BANNED_KEYWORDS: "";
 	BOT_TOKEN: string;
 	ADMIN_CHAT_ID: string;
 	TURNSTILE_SITE_KEY: string;
@@ -23,7 +22,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "WORKER_NAME" | "BANNED_KEYWORDS" | "BOT_TOKEN" | "ADMIN_CHAT_ID" | "TURNSTILE_SITE_KEY" | "TURNSTILE_SECRET_KEY" | "PUBLIC_BASE_URL" | "TELEGRAM_WEBHOOK_SECRET">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "WORKER_NAME" | "BOT_TOKEN" | "ADMIN_CHAT_ID" | "TURNSTILE_SITE_KEY" | "TURNSTILE_SECRET_KEY" | "PUBLIC_BASE_URL" | "TELEGRAM_WEBHOOK_SECRET">> {}
 }
 
 // Begin runtime types

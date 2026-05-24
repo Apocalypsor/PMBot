@@ -8,7 +8,6 @@ Telegram private-message relay bot running on Cloudflare Workers, Elysia, and gr
 - User to admin message copy with reply mapping
 - Admin reply to user by replying to the copied message
 - Telegram Mini App + Turnstile verification gate for non-admin users
-- Static blocked keywords from `BANNED_KEYWORDS`
 - Dynamic blocked keywords from admin commands
 - KV-backed verification state and message mappings
 
@@ -43,8 +42,7 @@ Set non-secret Worker vars in `wrangler.jsonc`:
 
 ```jsonc
 "vars": {
-  "WORKER_NAME": "pmbot",
-  "BANNED_KEYWORDS": "spam,scam"
+  "WORKER_NAME": "pmbot"
 }
 ```
 
@@ -110,6 +108,8 @@ Send these commands to the bot from the admin chat:
 /banword keyword
 /unbanword keyword
 /banwords
+/banuser user_id
+/unbanuser user_id
 /help
 ```
 
