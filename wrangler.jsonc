@@ -1,0 +1,36 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pmbot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-23",
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true,
+  "compatibility_flags": ["nodejs_compat"],
+  "preview_urls": true,
+  "kv_namespaces": [
+    {
+      "binding": "PMBOT_KV",
+      "id": "REPLACE_WITH_KV_NAMESPACE_ID"
+    }
+  ],
+  "vars": {
+    "WORKER_NAME": "pmbot",
+    "BANNED_KEYWORDS": ""
+  },
+  "secrets": {
+    "required": [
+      "BOT_TOKEN",
+      "ADMIN_CHAT_ID",
+      "TURNSTILE_SITE_KEY",
+      "TURNSTILE_SECRET_KEY",
+      "PUBLIC_BASE_URL",
+      "TELEGRAM_WEBHOOK_SECRET"
+    ]
+  }
+}
