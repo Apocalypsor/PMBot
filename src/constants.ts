@@ -1,8 +1,6 @@
-export const VERIFY_TOKEN_TTL_SECONDS = 15 * 60;
 export const ADMIN_MAPPING_TTL_SECONDS = 90 * 24 * 60 * 60;
 export const BOT_INFO_TTL_SECONDS = 30 * 24 * 60 * 60;
 
-export const VERIFY_TOKEN_PREFIX = "verify_token:";
 export const VERIFIED_USER_PREFIX = "verified_user:";
 export const BANNED_USER_PREFIX = "banned_user:";
 export const ADMIN_MESSAGE_PREFIX = "admin_message:";

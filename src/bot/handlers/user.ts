@@ -46,7 +46,7 @@ export const registerUserHandlers = (bot: Bot, env: Env): void => {
     }
 
     if (!(await isUserVerified(env, user.id))) {
-      const verifyUrl = await createVerificationUrl(env, user.id, message);
+      const verifyUrl = createVerificationUrl(env);
       await ctx.reply(
         "Please complete this verification before sending again.",
         {

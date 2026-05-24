@@ -12,45 +12,151 @@ export const htmlResponse = (body: string, status = 200): Response => {
   });
 };
 
-export const renderVerifyForm = (token: string, siteKey: string): string => {
+export const renderVerifyForm = (siteKey: string): string => {
   return htmlShell(
     "Verify",
     `
-      <p id="telegram-status">Preparing Telegram verification...</p>
-      <form method="post" action="/verify" id="verify-form">
-        <input type="hidden" name="token" value="${escapeHtml(token)}">
-        <input type="hidden" name="telegram_init_data" id="telegram-init-data">
-        <div class="cf-turnstile" data-sitekey="${escapeHtml(siteKey)}"></div>
-        <button type="submit" id="verify-button" disabled>Verify</button>
-      </form>
       <script src="https://telegram.org/js/telegram-web-app.js"></script>
-      <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
       <script>
         const telegram = window.Telegram?.WebApp;
-        const status = document.getElementById("telegram-status");
-        const initData = document.getElementById("telegram-init-data");
-        const button = document.getElementById("verify-button");
+        let submitting = false;
 
         if (telegram?.initData) {
           telegram.ready();
           telegram.expand();
-          initData.value = telegram.initData;
-          button.disabled = false;
-          status.textContent = "Complete the challenge below.";
-        } else {
-          status.textContent = "Open this verification from Telegram.";
+        } else if (telegram?.showAlert) {
+          telegram.showAlert("Open this verification from Telegram.");
         }
+
+        const closeTelegram = () => {
+          if (telegram?.close) telegram.close();
+        };
+
+        const finishVerification = () => {
+          if (telegram?.showAlert) {
+            telegram.showAlert(
+              "Verification complete. Please send your message again.",
+              closeTelegram,
+            );
+            return;
+          }
+
+          closeTelegram();
+        };
+
+        const showFailure = () => {
+          if (telegram?.showAlert) {
+            telegram.showAlert("Verification failed. Try again.");
+          }
+        };
+
+        window.onTurnstileSuccess = async (token) => {
+          if (submitting) return;
+          submitting = true;
+
+          try {
+            const response = await fetch("/verify", {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-telegram-init-data": telegram?.initData || "",
+              },
+              body: JSON.stringify({ turnstileToken: token }),
+            });
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok || result.ok !== true) {
+              throw new Error("verification_failed");
+            }
+
+            finishVerification();
+          } catch {
+            submitting = false;
+            window.turnstile?.reset();
+            showFailure();
+          }
+        };
+
+        window.onTurnstileExpired = () => {
+          submitting = false;
+        };
       </script>
+      <div
+        class="cf-turnstile"
+        data-sitekey="${escapeHtml(siteKey)}"
+        data-theme="dark"
+        data-callback="onTurnstileSuccess"
+        data-expired-callback="onTurnstileExpired"
+        data-error-callback="onTurnstileExpired"
+      ></div>
+      <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     `,
   );
 };
 
-export const renderStatusPage = (message: string, success: boolean): string => {
-  return htmlShell(success ? "Done" : "Error", `<p>${escapeHtml(message)}</p>`);
+export const renderStatusPage = (
+  message: string,
+  success: boolean,
+  autoClose = false,
+): string => {
+  return htmlShell(
+    success ? "Done" : "Error",
+    `
+      <p>${escapeHtml(message)}</p>
+      ${
+        autoClose
+          ? `
+            <p class="muted">Closing...</p>
+            <script src="https://telegram.org/js/telegram-web-app.js"></script>
+            <script>
+              const telegram = window.Telegram?.WebApp;
+              if (telegram) {
+                telegram.ready();
+                setTimeout(() => telegram.close(), 500);
+              }
+            </script>
+          `
+          : ""
+      }
+    `,
+  );
 };
 
 export const getFormString = (value: unknown): string => {
   return typeof value === "string" ? value : "";
+};
+
+export const getVerifySubmitPayload = async (
+  request: Request,
+): Promise<{
+  telegramInitData: string;
+  turnstileResponse: string;
+}> => {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const body = (await request.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+    return {
+      telegramInitData:
+        request.headers.get("x-telegram-init-data") ??
+        getBodyString(body.telegramInitData) ??
+        getBodyString(body.telegram_init_data) ??
+        "",
+      turnstileResponse:
+        getBodyString(body.turnstileToken) ??
+        getBodyString(body.cfTurnstileResponse) ??
+        getBodyString(body["cf-turnstile-response"]) ??
+        "",
+    };
+  }
+
+  const form = await request.formData();
+  return {
+    telegramInitData: getFormString(form.get("telegram_init_data")),
+    turnstileResponse: getFormString(form.get("cf-turnstile-response")),
+  };
 };
 
 export const verifyTurnstile = async (
@@ -138,8 +244,8 @@ const htmlShell = (title: string, content: string): string => {
     <style>
       body {
         align-items: center;
-        background: #f6f7f9;
-        color: #15181e;
+        background: #000;
+        color: #f4f4f5;
         display: flex;
         font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         justify-content: center;
@@ -147,39 +253,25 @@ const htmlShell = (title: string, content: string): string => {
         min-height: 100vh;
       }
       main {
-        background: white;
-        border: 1px solid #dde2ea;
-        border-radius: 8px;
-        box-shadow: 0 14px 50px rgb(21 24 30 / 10%);
         box-sizing: border-box;
         max-width: 420px;
-        padding: 24px;
+        padding: 24px 16px;
         width: calc(100% - 32px);
       }
       h1 {
-        font-size: 22px;
+        font-size: 24px;
         line-height: 1.2;
-        margin: 0 0 16px;
+        margin: 0 0 18px;
+        text-align: center;
       }
       p {
+        color: #d4d4d8;
         line-height: 1.5;
         margin: 0;
       }
-      button {
-        background: #116149;
-        border: 0;
-        border-radius: 6px;
-        color: white;
-        cursor: pointer;
-        font: inherit;
-        font-weight: 650;
-        margin-top: 18px;
-        padding: 11px 14px;
-        width: 100%;
-      }
-      button:disabled {
-        cursor: not-allowed;
-        opacity: 0.55;
+      .cf-turnstile {
+        display: flex;
+        justify-content: center;
       }
     </style>
   </head>
@@ -198,6 +290,10 @@ const escapeHtml = (value: string): string => {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+};
+
+const getBodyString = (value: unknown): string | undefined => {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 };
 
 const hmacSha256 = async (

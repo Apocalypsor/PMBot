@@ -3,6 +3,14 @@ export interface VerifyHtmlResult {
   html: string;
 }
 
+export interface VerifySubmitResult {
+  status: number;
+  body: {
+    ok: boolean;
+    error?: string;
+  };
+}
+
 export interface TurnstileSiteVerifyResponse {
   success: boolean;
   "error-codes"?: string[];

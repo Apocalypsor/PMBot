@@ -3,12 +3,12 @@ import type { BotCommand } from "grammy/types";
 import { memoizeAsync } from "@/bot/utils/memoize";
 import { getBotCommandsVersion, putBotCommandsVersion } from "@/db/kv";
 
-const BOT_COMMANDS_VERSION = 1;
-
 const BOT_COMMANDS: BotCommand[] = [
   { command: "start", description: "Start the bot" },
   { command: "help", description: "Show commands" },
 ];
+
+const BOT_COMMANDS_VERSION = JSON.stringify(BOT_COMMANDS);
 
 export const helpText = (isAdmin: boolean): string => {
   const lines = [
@@ -38,11 +38,11 @@ export const helpText = (isAdmin: boolean): string => {
 
 export const syncBotCommands = memoizeAsync(async (env: Env): Promise<void> => {
   const cached = await getBotCommandsVersion(env);
-  if (cached === String(BOT_COMMANDS_VERSION)) {
+  if (cached === BOT_COMMANDS_VERSION) {
     return;
   }
 
   const api = new Api(env.BOT_TOKEN);
   await api.setMyCommands(BOT_COMMANDS);
-  await putBotCommandsVersion(env, String(BOT_COMMANDS_VERSION));
+  await putBotCommandsVersion(env, BOT_COMMANDS_VERSION);
 });

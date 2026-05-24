@@ -7,14 +7,7 @@ export interface AdminMessageMapping {
   createdAt: string;
 }
 
-export interface VerifyTokenRecord {
-  userId: number;
-  chatId: string;
-  createdAt: string;
-}
-
 export interface VerifiedUserRecord {
   userId: number;
-  chatId: string;
   verifiedAt: string;
 }

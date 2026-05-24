@@ -1,5 +1,8 @@
 import { app } from "@/api";
 import type { RequestWithCtx } from "@/api/plugins/cf";
+
+export { PMBotState } from "@/db/state";
+
 import type { Env } from "@/types";
 
 export default {

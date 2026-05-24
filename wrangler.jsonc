@@ -19,6 +19,20 @@
       "id": "e6511ef990c24793b7d10a31e117dda6"
     }
   ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PMBOT_STATE",
+        "class_name": "PMBotState"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["PMBotState"]
+    }
+  ],
   "vars": {
     "WORKER_NAME": "pmbot"
   },

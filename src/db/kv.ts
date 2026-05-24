@@ -7,55 +7,31 @@ import {
   BOT_INFO_TTL_SECONDS,
   DYNAMIC_BAN_WORDS_KEY,
   VERIFIED_USER_PREFIX,
-  VERIFY_TOKEN_PREFIX,
-  VERIFY_TOKEN_TTL_SECONDS,
 } from "@/constants";
-import type {
-  AdminMessageMapping,
-  VerifiedUserRecord,
-  VerifyTokenRecord,
-} from "@/types";
+import { hasVerifiedUserState, putVerifiedUserState } from "@/db/state";
+import type { AdminMessageMapping, VerifiedUserRecord } from "@/types";
 
-export const putVerifyTokenRecord = async (
-  env: Env,
-  token: string,
-  record: VerifyTokenRecord,
-): Promise<void> => {
-  await env.PMBOT_KV.put(verifyTokenKey(token), JSON.stringify(record), {
-    expirationTtl: VERIFY_TOKEN_TTL_SECONDS,
-  });
-};
-
-export const getVerifyTokenRecord = async (
-  env: Env,
-  token: string,
-): Promise<VerifyTokenRecord | null> => {
-  return env.PMBOT_KV.get<VerifyTokenRecord>(verifyTokenKey(token), "json");
-};
-
-export const completeVerification = async (
-  env: Env,
-  token: string,
-  record: VerifyTokenRecord,
-): Promise<void> => {
+export const verifyUser = async (env: Env, userId: number): Promise<void> => {
   const verified: VerifiedUserRecord = {
-    userId: record.userId,
-    chatId: record.chatId,
+    userId,
     verifiedAt: new Date().toISOString(),
   };
+  const key = verifiedUserKey(userId);
 
-  await env.PMBOT_KV.put(
-    verifiedUserKey(record.userId),
-    JSON.stringify(verified),
-  );
-  await env.PMBOT_KV.delete(verifyTokenKey(token));
+  await Promise.all([
+    env.PMBOT_KV.put(key, JSON.stringify(verified)),
+    putVerifiedUserState(env, key, verified),
+  ]);
 };
 
 export const isUserVerified = async (
   env: Env,
   userId: number,
 ): Promise<boolean> => {
-  return (await env.PMBOT_KV.get(verifiedUserKey(userId))) !== null;
+  const key = verifiedUserKey(userId);
+  if ((await env.PMBOT_KV.get(key)) !== null) return true;
+
+  return hasVerifiedUserState(env, key);
 };
 
 export const isUserBanned = async (
@@ -136,10 +112,6 @@ export const putBotCommandsVersion = async (
   version: string,
 ): Promise<void> => {
   await env.PMBOT_KV.put(BOT_COMMANDS_VERSION_KEY, version);
-};
-
-const verifyTokenKey = (token: string): string => {
-  return `${VERIFY_TOKEN_PREFIX}${token}`;
 };
 
 const verifiedUserKey = (userId: number): string => {

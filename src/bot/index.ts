@@ -33,14 +33,10 @@ export const getBotInfo = memoizeAsync(
   },
 );
 
-const getBot = memoizeAsync(async (env: Env): Promise<Bot> => {
-  return createBot(env, await getBotInfo(env));
-});
-
 export const processTelegramUpdate = async (
   env: Env,
   update: Update,
 ): Promise<void> => {
-  const bot = await getBot(env);
+  const bot = createBot(env, await getBotInfo(env));
   await bot.handleUpdate(update);
 };
