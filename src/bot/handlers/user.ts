@@ -1,4 +1,4 @@
-import type { Bot } from "grammy";
+import type { Bot, Context } from "grammy";
 import { forwardUserMessage } from "@/bot/utils/forward";
 import { findBlockedKeyword } from "@/bot/utils/keywords";
 import {
@@ -6,7 +6,7 @@ import {
   getMessageText,
   isAdminContext,
 } from "@/bot/utils/message";
-import { createVerificationUrl } from "@/bot/utils/verification";
+import { replyWithVerification } from "@/bot/utils/verification";
 import { isUserBanned, isUserVerified, putAdminMapping } from "@/db/kv";
 import type { AdminMessageMapping } from "@/types";
 
@@ -46,17 +46,7 @@ export const registerUserHandlers = (bot: Bot, env: Env): void => {
     }
 
     if (!(await isUserVerified(env, user.id))) {
-      const verifyUrl = createVerificationUrl(env);
-      await ctx.reply(
-        "Please complete this verification before sending again.",
-        {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "Verify in Telegram", web_app: { url: verifyUrl } }],
-            ],
-          },
-        },
-      );
+      await replyWithVerification(env, ctx);
       return;
     }
 
@@ -75,6 +65,24 @@ export const registerUserHandlers = (bot: Bot, env: Env): void => {
       ),
     );
 
-    await ctx.reply("Message delivered. The admin can reply here.");
+    await reactToDeliveredMessage(env, ctx);
   });
+};
+
+const reactToDeliveredMessage = async (
+  env: Env,
+  ctx: Context,
+): Promise<void> => {
+  try {
+    await ctx.react("👌");
+  } catch (error) {
+    console.warn({
+      level: "warn",
+      event: "message.delivery_reaction_failed",
+      worker_name: env.WORKER_NAME,
+      user_id: ctx.from?.id,
+      chat_id: ctx.chat?.id ? String(ctx.chat.id) : undefined,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 };

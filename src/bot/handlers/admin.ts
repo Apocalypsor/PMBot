@@ -105,6 +105,7 @@ export const registerAdminHandlers = (bot: Bot, env: Env): void => {
         adminChatId,
         message.message_id,
       );
+      await reactToDeliveredMessage(env, ctx);
     } catch (error) {
       await reportError(env, "telegram.admin_reply_failed", error, {
         user_id: mapping.userId,
@@ -114,6 +115,24 @@ export const registerAdminHandlers = (bot: Bot, env: Env): void => {
       await ctx.reply("Failed to send this reply.");
     }
   });
+};
+
+const reactToDeliveredMessage = async (
+  env: Env,
+  ctx: Context,
+): Promise<void> => {
+  try {
+    await ctx.react("👌");
+  } catch (error) {
+    console.warn({
+      level: "warn",
+      event: "admin.reply_reaction_failed",
+      worker_name: env.WORKER_NAME,
+      user_id: ctx.from?.id,
+      chat_id: ctx.chat?.id ? String(ctx.chat.id) : undefined,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 };
 
 const resolveTargetUserId = async (

@@ -23,7 +23,6 @@ export const renderVerifyForm = (siteKey: string): string => {
 
         if (telegram?.initData) {
           telegram.ready();
-          telegram.expand();
         } else if (telegram?.showAlert) {
           telegram.showAlert("Open this verification from Telegram.");
         }
@@ -243,25 +242,21 @@ const htmlShell = (title: string, content: string): string => {
     <title>${escapeHtml(title)}</title>
     <style>
       body {
-        align-items: center;
         background: #000;
         color: #f4f4f5;
-        display: flex;
         font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        justify-content: center;
         margin: 0;
-        min-height: 100vh;
       }
       main {
         box-sizing: border-box;
         max-width: 420px;
-        padding: 24px 16px;
-        width: calc(100% - 32px);
+        padding: 16px;
+        width: 100%;
       }
       h1 {
-        font-size: 24px;
+        font-size: 20px;
         line-height: 1.2;
-        margin: 0 0 18px;
+        margin: 0 0 12px;
         text-align: center;
       }
       p {
