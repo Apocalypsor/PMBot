@@ -2,7 +2,7 @@ import type { Bot, Context } from "grammy";
 import {
   formatBannedKeywords,
   getCommandArgument,
-  getReplyToMessageId,
+  getReplyToMessage,
 } from "@/bot/utils/admin";
 import {
   addDynamicBannedKeyword,
@@ -11,11 +11,11 @@ import {
   removeDynamicBannedKeyword,
 } from "@/bot/utils/keywords";
 import {
-  getAdminChatId,
   getMessageText,
+  getReferencedUserId,
   isAdminContext,
 } from "@/bot/utils/message";
-import { banUser, getAdminMapping, unbanUser } from "@/db/kv";
+import { banUser, unbanUser } from "@/db/kv";
 import { reportError } from "@/observability";
 
 export const registerAdminHandlers = (bot: Bot, env: Env): void => {
@@ -48,10 +48,10 @@ export const registerAdminHandlers = (bot: Bot, env: Env): void => {
   });
 
   admin.command("banuser", async (ctx) => {
-    const userId = await resolveTargetUserId(env, ctx);
+    const userId = await resolveTargetUserId(ctx);
     if (!userId) {
       await ctx.reply(
-        "Usage: /banuser user_id, or reply /banuser to a forwarded user message.",
+        "Usage: /banuser user_id, or reply /banuser to the > from ... reference message.",
       );
       return;
     }
@@ -81,35 +81,29 @@ export const registerAdminHandlers = (bot: Bot, env: Env): void => {
       return;
     }
 
-    const replyToMessageId = getReplyToMessageId(message);
-    if (!replyToMessageId) {
+    const repliedMessage = getReplyToMessage(message);
+    if (!repliedMessage) {
       await ctx.reply(
-        "Reply to a copied user message to send your response back.",
+        "Reply to the > from ... reference message to send your response back.",
       );
+      return;
+    }
+
+    const userId = getReferencedUserId(repliedMessage);
+    if (!userId) {
+      await ctx.reply("Reply to the > from ... reference message.");
       return;
     }
 
     const adminChatId = String(message.chat.id);
-    const mapping =
-      (await getAdminMapping(env, adminChatId, replyToMessageId)) ??
-      (await getAdminMapping(env, getAdminChatId(env), replyToMessageId));
-
-    if (!mapping) {
-      await ctx.reply("No user mapping was found for that replied message.");
-      return;
-    }
 
     try {
-      await ctx.api.copyMessage(
-        mapping.userChatId,
-        adminChatId,
-        message.message_id,
-      );
+      await ctx.api.copyMessage(userId, adminChatId, message.message_id);
       await reactToDeliveredMessage(env, ctx);
     } catch (error) {
       await reportError(env, "telegram.admin_reply_failed", error, {
-        user_id: mapping.userId,
-        user_chat_id: mapping.userChatId,
+        user_id: userId,
+        user_chat_id: String(userId),
         admin_message_id: message.message_id,
       });
       await ctx.reply("Failed to send this reply.");
@@ -135,10 +129,7 @@ const reactToDeliveredMessage = async (
   }
 };
 
-const resolveTargetUserId = async (
-  env: Env,
-  ctx: Context,
-): Promise<number | null> => {
+const resolveTargetUserId = async (ctx: Context): Promise<number | null> => {
   const argument = Number(getCommandArgument(ctx));
   if (Number.isSafeInteger(argument) && argument > 0) {
     return argument;
@@ -147,13 +138,6 @@ const resolveTargetUserId = async (
   const message = ctx.message;
   if (!message) return null;
 
-  const replyToMessageId = getReplyToMessageId(message);
-  if (!replyToMessageId) return null;
-
-  const adminChatId = String(message.chat.id);
-  const mapping =
-    (await getAdminMapping(env, adminChatId, replyToMessageId)) ??
-    (await getAdminMapping(env, getAdminChatId(env), replyToMessageId));
-
-  return mapping?.userId ?? null;
+  const repliedMessage = getReplyToMessage(message);
+  return repliedMessage ? getReferencedUserId(repliedMessage) : null;
 };

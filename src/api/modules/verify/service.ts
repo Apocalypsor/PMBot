@@ -1,4 +1,6 @@
+import { createTelegramApi } from "@/clients/telegram";
 import { verifyUser } from "@/db/kv";
+import { reportError } from "@/observability";
 import type { VerifyHtmlResult, VerifySubmitResult } from "./types";
 import {
   getVerifySubmitPayload,
@@ -34,7 +36,7 @@ export abstract class VerifyService {
       };
     }
 
-    const { telegramInitData, turnstileResponse } =
+    const { promptMessageId, telegramInitData, turnstileResponse } =
       await getVerifySubmitPayload(request);
 
     if (!turnstileResponse || !telegramInitData) {
@@ -68,6 +70,7 @@ export abstract class VerifyService {
     }
 
     await verifyUser(env, telegramUser.id);
+    await notifyVerificationComplete(env, telegramUser.id, promptMessageId);
 
     return {
       status: 200,
@@ -75,3 +78,28 @@ export abstract class VerifyService {
     };
   };
 }
+
+const notifyVerificationComplete = async (
+  env: Env,
+  userId: number,
+  promptMessageId?: number,
+): Promise<void> => {
+  const api = createTelegramApi(env);
+
+  if (promptMessageId) {
+    await api.deleteMessage(userId, promptMessageId).catch(async (error) => {
+      await reportError(env, "telegram.verify_prompt_delete_failed", error, {
+        prompt_message_id: promptMessageId,
+        user_id: userId,
+      });
+    });
+  }
+
+  await api
+    .sendMessage(userId, "Verification complete. You can send messages now.")
+    .catch(async (error) => {
+      await reportError(env, "telegram.verify_complete_message_failed", error, {
+        user_id: userId,
+      });
+    });
+};

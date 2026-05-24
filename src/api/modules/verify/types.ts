@@ -11,6 +11,12 @@ export interface VerifySubmitResult {
   };
 }
 
+export interface VerifySubmitPayload {
+  promptMessageId?: number;
+  telegramInitData: string;
+  turnstileResponse: string;
+}
+
 export interface TurnstileSiteVerifyResponse {
   success: boolean;
   "error-codes"?: string[];

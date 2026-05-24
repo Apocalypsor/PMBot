@@ -40,6 +40,15 @@ export const formatUserReference = (message: Message): string => {
   return `> ${escapeMarkdownV2(`from ${username} (${userId})`)}`;
 };
 
+export const getReferencedUserId = (message: Message): number | null => {
+  const text = getMessageText(message);
+  const match = /(?:^|\n)\s*>?\s*from\s+.+\((\d+)\)\s*$/i.exec(text);
+  if (!match) return null;
+
+  const userId = Number(match[1]);
+  return Number.isSafeInteger(userId) && userId > 0 ? userId : null;
+};
+
 export const hasCaptionSlot = (message: Message): boolean => {
   return (
     "animation" in message ||

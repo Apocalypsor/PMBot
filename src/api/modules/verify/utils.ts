@@ -1,4 +1,8 @@
-import type { TelegramMiniAppUser, TurnstileSiteVerifyResponse } from "./types";
+import type {
+  TelegramMiniAppUser,
+  TurnstileSiteVerifyResponse,
+  VerifySubmitPayload,
+} from "./types";
 
 const TELEGRAM_INIT_DATA_MAX_AGE_SECONDS = 15 * 60;
 
@@ -19,10 +23,14 @@ export const renderVerifyForm = (siteKey: string): string => {
       <script src="https://telegram.org/js/telegram-web-app.js"></script>
       <script>
         const telegram = window.Telegram?.WebApp;
+        const searchParams = new URLSearchParams(window.location.search);
         let submitting = false;
 
         if (telegram?.initData) {
           telegram.ready();
+          telegram.setBackgroundColor?.("#000000");
+          telegram.setHeaderColor?.("#000000");
+          telegram.setBottomBarColor?.("#000000");
         } else if (telegram?.showAlert) {
           telegram.showAlert("Open this verification from Telegram.");
         }
@@ -32,15 +40,7 @@ export const renderVerifyForm = (siteKey: string): string => {
         };
 
         const finishVerification = () => {
-          if (telegram?.showAlert) {
-            telegram.showAlert(
-              "Verification complete. Please send your message again.",
-              closeTelegram,
-            );
-            return;
-          }
-
-          closeTelegram();
+          setTimeout(closeTelegram, 100);
         };
 
         const showFailure = () => {
@@ -60,7 +60,10 @@ export const renderVerifyForm = (siteKey: string): string => {
                 "content-type": "application/json",
                 "x-telegram-init-data": telegram?.initData || "",
               },
-              body: JSON.stringify({ turnstileToken: token }),
+              body: JSON.stringify({
+                promptMessageId: searchParams.get("message_id"),
+                turnstileToken: token,
+              }),
             });
             const result = await response.json().catch(() => ({}));
 
@@ -127,10 +130,7 @@ export const getFormString = (value: unknown): string => {
 
 export const getVerifySubmitPayload = async (
   request: Request,
-): Promise<{
-  telegramInitData: string;
-  turnstileResponse: string;
-}> => {
+): Promise<VerifySubmitPayload> => {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     const body = (await request.json().catch(() => ({}))) as Record<
@@ -138,6 +138,9 @@ export const getVerifySubmitPayload = async (
       unknown
     >;
     return {
+      promptMessageId:
+        getMessageId(body.promptMessageId) ??
+        getMessageId(new URL(request.url).searchParams.get("message_id")),
       telegramInitData:
         request.headers.get("x-telegram-init-data") ??
         getBodyString(body.telegramInitData) ??
@@ -153,6 +156,9 @@ export const getVerifySubmitPayload = async (
 
   const form = await request.formData();
   return {
+    promptMessageId:
+      getMessageId(form.get("prompt_message_id")) ??
+      getMessageId(new URL(request.url).searchParams.get("message_id")),
     telegramInitData: getFormString(form.get("telegram_init_data")),
     turnstileResponse: getFormString(form.get("cf-turnstile-response")),
   };
@@ -239,10 +245,15 @@ const htmlShell = (title: string, content: string): string => {
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#000000">
     <title>${escapeHtml(title)}</title>
     <style>
+      html,
       body {
         background: #000;
+        color-scheme: dark;
+      }
+      body {
         color: #f4f4f5;
         font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         margin: 0;
@@ -289,6 +300,18 @@ const escapeHtml = (value: string): string => {
 
 const getBodyString = (value: unknown): string | undefined => {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+};
+
+const getMessageId = (value: unknown): number | undefined => {
+  const messageId =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : Number.NaN;
+  return Number.isSafeInteger(messageId) && messageId > 0
+    ? messageId
+    : undefined;
 };
 
 const hmacSha256 = async (

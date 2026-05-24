@@ -7,8 +7,7 @@ import {
   isAdminContext,
 } from "@/bot/utils/message";
 import { replyWithVerification } from "@/bot/utils/verification";
-import { isUserBanned, isUserVerified, putAdminMapping } from "@/db/kv";
-import type { AdminMessageMapping } from "@/types";
+import { isUserBanned, isUserVerified } from "@/db/kv";
 
 export const registerUserHandlers = (bot: Bot, env: Env): void => {
   bot.on("message", async (ctx) => {
@@ -51,20 +50,7 @@ export const registerUserHandlers = (bot: Bot, env: Env): void => {
     }
 
     const adminChatId = getAdminChatId(env);
-    const forwardedMessageIds = await forwardUserMessage(ctx, adminChatId);
-    const mapping: AdminMessageMapping = {
-      userChatId: String(message.chat.id),
-      userId: user.id,
-      sourceMessageId: message.message_id,
-      createdAt: new Date().toISOString(),
-    };
-
-    await Promise.all(
-      forwardedMessageIds.map((messageId) =>
-        putAdminMapping(env, adminChatId, messageId, mapping),
-      ),
-    );
-
+    await forwardUserMessage(ctx, adminChatId);
     await reactToDeliveredMessage(env, ctx);
   });
 };

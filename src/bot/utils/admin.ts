@@ -8,9 +8,9 @@ export const getCommandArgument = (ctx: Context): string => {
   return firstSpace === -1 ? "" : text.slice(firstSpace + 1).trim();
 };
 
-export const getReplyToMessageId = (message: Message): number | undefined => {
+export const getReplyToMessage = (message: Message): Message | undefined => {
   if ("reply_to_message" in message) {
-    return message.reply_to_message?.message_id;
+    return message.reply_to_message;
   }
   return undefined;
 };

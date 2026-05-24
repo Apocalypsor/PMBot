@@ -1,6 +1,4 @@
 import {
-  ADMIN_MAPPING_TTL_SECONDS,
-  ADMIN_MESSAGE_PREFIX,
   BANNED_USER_PREFIX,
   BOT_COMMANDS_VERSION_KEY,
   BOT_INFO_KEY,
@@ -9,7 +7,7 @@ import {
   VERIFIED_USER_PREFIX,
 } from "@/constants";
 import { hasVerifiedUserState, putVerifiedUserState } from "@/db/state";
-import type { AdminMessageMapping, VerifiedUserRecord } from "@/types";
+import type { VerifiedUserRecord } from "@/types";
 
 export const verifyUser = async (env: Env, userId: number): Promise<void> => {
   const verified: VerifiedUserRecord = {
@@ -47,30 +45,6 @@ export const banUser = async (env: Env, userId: number): Promise<void> => {
 
 export const unbanUser = async (env: Env, userId: number): Promise<void> => {
   await env.PMBOT_KV.delete(bannedUserKey(userId));
-};
-
-export const getAdminMapping = async (
-  env: Env,
-  adminChatId: string,
-  messageId: number,
-): Promise<AdminMessageMapping | null> => {
-  return env.PMBOT_KV.get<AdminMessageMapping>(
-    adminMessageKey(adminChatId, messageId),
-    "json",
-  );
-};
-
-export const putAdminMapping = async (
-  env: Env,
-  adminChatId: string,
-  messageId: number,
-  mapping: AdminMessageMapping,
-): Promise<void> => {
-  await env.PMBOT_KV.put(
-    adminMessageKey(adminChatId, messageId),
-    JSON.stringify(mapping),
-    { expirationTtl: ADMIN_MAPPING_TTL_SECONDS },
-  );
 };
 
 export const getDynamicBannedKeywords = async (env: Env): Promise<string[]> => {
@@ -120,10 +94,6 @@ const verifiedUserKey = (userId: number): string => {
 
 const bannedUserKey = (userId: number): string => {
   return `${BANNED_USER_PREFIX}${userId}`;
-};
-
-const adminMessageKey = (adminChatId: string, messageId: number): string => {
-  return `${ADMIN_MESSAGE_PREFIX}${adminChatId}:${messageId}`;
 };
 
 const normalizeKeyword = (value: string): string => {
