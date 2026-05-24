@@ -1,15 +1,15 @@
 # PMBot
 
-Telegram private-message relay bot running on Cloudflare Workers, Elysia, and grammY. It forwards user messages to an admin chat, maps the copied admin message back to the user, and copies admin replies back to the original user.
+Telegram private-message relay bot running on Cloudflare Workers, Elysia, and grammY. It forwards user messages to an admin chat, tags each message with a user reference, and lets the admin reply back by replying to that reference.
 
 ## Features
 
 - Telegram webhook endpoint at `/api/telegram/webhook/:secret`
-- User to admin message copy with reply mapping
-- Admin reply to user by replying to the copied message
+- User to admin message relay with a `> from ... (user_id)` reference
+- Admin reply to user by replying to the reference message
 - Telegram Mini App + Turnstile verification gate for non-admin users
 - Dynamic blocked keywords from admin commands
-- KV-backed verification state and message mappings
+- KV-backed bot state, with a short Durable Object fallback for freshly verified users
 
 ## Requirements
 
@@ -38,6 +38,8 @@ Copy the returned namespace `id` into `wrangler.jsonc`:
 ]
 ```
 
+Durable Object state for the short verification fallback is already declared in `wrangler.jsonc`. It is created by the migration during deploy; no separate create command is needed.
+
 Set non-secret Worker vars in `wrangler.jsonc`:
 
 ```jsonc
@@ -62,8 +64,6 @@ Turnstile uses two keys:
 - `TURNSTILE_SITE_KEY`: rendered into the verification page as the widget `sitekey`.
 - `TURNSTILE_SECRET_KEY`: sent only from the Worker to Cloudflare Siteverify.
 
-For local development, copy `.dev.vars.example` to `.dev.vars` and fill in the values.
-
 ## Install And Verify
 
 ```bash
@@ -86,6 +86,15 @@ Telegram webhooks and Mini App verification require a public HTTPS URL. For loca
 ```bash
 bun run deploy
 ```
+
+GitHub Actions deploys require these repository secrets:
+
+```text
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ACCOUNT_ID
+```
+
+Worker runtime secrets such as `BOT_TOKEN` and `TURNSTILE_SECRET_KEY` are stored in Cloudflare via `wrangler secret put`; the current GitHub workflow does not read them from GitHub.
 
 After deploy, configure the Telegram webhook:
 
@@ -113,11 +122,4 @@ Send these commands to the bot from the admin chat:
 /help
 ```
 
-Reply to any copied user message in the admin chat to send your response back to that user.
-
-## Code Quality
-
-- `bun run check` runs Biome in check mode.
-- `bun run fix` applies Biome fixes.
-- Husky `pre-commit` runs `bun typecheck` and `bun lint-staged`.
-- `lint-staged` runs Biome on staged files.
+Reply to the `> from ... (user_id)` reference message in the admin chat to send your response back to that user. For media that can carry captions, the reference is appended to the copied message. For messages that cannot carry captions, the bot sends a separate reference message; reply to that reference.
