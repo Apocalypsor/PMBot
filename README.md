@@ -13,7 +13,7 @@ Telegram private-message relay bot running on Cloudflare Workers, Elysia, and gr
 
 ## Requirements
 
-- Bun
+- Bun 1.4.3 or later (CI uses the version pinned in `package.json`)
 - Cloudflare account
 - Telegram bot token from BotFather
 - Cloudflare Turnstile site key and secret key
@@ -69,9 +69,12 @@ Turnstile uses two keys:
 ```bash
 bun install
 bun run typegen
-bun run typecheck
-bun run check
+bun check
+bun run lint
 ```
+
+`bun check` runs Bun's native TypeScript checker using `tsconfig.json`.
+`bun run typecheck` is an alias for the same check; `bun run lint` runs Biome.
 
 ## Run Locally
 
